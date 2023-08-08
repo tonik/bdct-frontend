@@ -1,0 +1,61 @@
+name: Production
+on:
+  push:
+    branches:
+      - main
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+      PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+      PACT_CONSUMER: 'frontend'
+      PACT_PROVIDER: 'backend'
+      VERSION: ${{ github.sha }}
+      GIT_BRANCH: ${{ github.ref_name }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    - name: Install dependencies
+      run: yarn install
+    - name: Run tests
+      run: make test
+      env:
+        PACT_CONSUMER: 'frontend'
+        PACT_PROVIDER: 'backend'
+    - name: Publish Pact
+      run: make publish_pacts
+  can_i_deploy:
+      runs-on: ubuntu-latest
+      needs: test
+      env:
+        PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+        PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+        DEPLOYMENT_TARGET: 'production'
+        PACTICIPANT: 'frontend'
+        VERSION: ${{ github.sha }}
+        GIT_BRANCH: ${{ github.ref_name }}
+      steps:
+        - uses: actions/checkout@v3
+        - name: Can I deploy?
+          run: make can_i_deploy
+  deployment:
+      runs-on: ubuntu-latest
+      needs: can_i_deploy
+      env:
+        PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+        PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+        PACTICIPANT: 'frontend'
+        VERSION: ${{ github.sha }}
+        GIT_BRANCH: ${{ github.ref_name }}
+        DEPLOYMENT_TARGET: 'production'
+      steps:
+        - uses: actions/checkout@v3
+        - name: Deploy
+          run: make deploy
+        - name: Record deployment
+          run: make record_deployment
+        

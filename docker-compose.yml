@@ -1,0 +1,49 @@
+version: '3.8'
+services:
+  publish_pacts:
+    image: pactfoundation/pact-cli:latest
+    working_dir: /app
+    environment:
+      - PACT_BROKER_BASE_URL=${PACT_BROKER_BASE_URL}
+      - PACT_BROKER_TOKEN=${PACT_BROKER_TOKEN}
+      - PACTICIPANT=${PACTICIPANT}
+      - VERSION=${VERSION}
+      - GIT_BRANCH=${GIT_BRANCH}
+    volumes:
+      - ./:/app
+    command: >
+      /bin/sh -c "pact publish /app/pacts 
+      --consumer-app-version $${VERSION} 
+      --branch $${GIT_BRANCH}"
+  can_i_deploy:
+    image: pactfoundation/pact-cli:latest
+    working_dir: /app
+    environment:
+      - PACT_BROKER_BASE_URL=${PACT_BROKER_BASE_URL}
+      - PACT_BROKER_TOKEN=${PACT_BROKER_TOKEN}
+      - PACTICIPANT=${PACTICIPANT}
+      - VERSION=${VERSION}
+    volumes:
+      - ./:/app
+    command: >
+      /bin/sh -c "pact broker can-i-deploy
+      --pacticipant $${PACTICIPANT} 
+      --version $${VERSION} 
+      --to-environment ${DEPLOYMENT_TARGET} 
+      --retry-while-unknown 6 
+      --retry-interval 10"
+  record_deployment:
+    image: pactfoundation/pact-cli:latest
+    working_dir: /app
+    environment:
+      - PACT_BROKER_BASE_URL=${PACT_BROKER_BASE_URL}
+      - PACT_BROKER_TOKEN=${PACT_BROKER_TOKEN}
+      - PACTICIPANT=${PACTICIPANT}
+      - VERSION=${VERSION}
+    volumes:
+      - ./:/app
+    command: >
+      /bin/sh -c "pact broker record-deployment 
+      --pacticipant $${PACTICIPANT} 
+      --version $${VERSION} 
+      --environment ${DEPLOYMENT_TARGET}"
